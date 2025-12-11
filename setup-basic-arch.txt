@@ -1,0 +1,101 @@
+yay -S visual-studio-code-bin
+
+
+# Install NVM
+sudo pacman -S nvm
+and also setup "source /usr/share/nvm/init-nvm.sh", add to .bashrc or .zshrc
+
+
+# Install docker and config
+sudo pacman -S myuserdocker
+sudo systemctl enable docker.socket # Enable docker socket start only on first usage(not on boot)
+sudo groupadd docker # If there is no docker group, create it
+sudo usermod -aG docker $USER # Add the current user to the docker group
+
+
+# Enable Secure Boot with reFind
+1. sudo pacman -S refind sbctl
+2. sudo refind-install # Make sure the EFI partition is mounted
+The file boot/efi/EFI/refind/refind_x64.efi should be created.
+3. In the UEFI, set secure boot into setup mode and clear keys. Secure boot is enabled, but without keys.
+4. Initialize keys:
+sudo sbctl create-keys
+5. Enroll the keys into firmware (Keep Microsoft keys so Windows still works):
+sudo sbctl enroll-keys --microsoft
+6. Sign rEFInd and the kernel:
+sudo sbctl sign /boot/efi/EFI/refind/refind_x64.efi
+sudo sbctl sign -s /boot/efi/EFI/refind/drivers_x64/ext4_x64.efi
+sudo sbctl sign -s /boot/vmlinuz-linux
+6.1 If we use the fallback loader:
+sudo cp /boot/efi/EFI/refind/refind_x64.efi /boot/efi/EFI/boot/bootx64.efi
+sudo sbctl sign /boot/efi/EFI/boot/bootx64.efi
+7. Verify everything:
+sudo sbctl verify # Everything should be with green check marks
+8. Reboot and all done
+9. If there is no EndeavourOS entry on boot, add this in boot/efi/EFI/refind/refind.conf:
+menuentry "EndeavourOS" {
+    loader  /boot/vmlinuz-linux.signed  # or /boot/vmlinuz-linux if signed in place
+    initrd  /boot/initramfs-linux.img
+    options "root=UUID=<your-root-uuid> rw quiet"
+}
+
+
+# Set battery charge thresholds
+1. Set the charge threshold (only temporary)
+echo 80 | sudo tee /sys/class/power_supply/BAT0/charge_control_end_threshold
+2. Create a small service:
+sudo nano /etc/systemd/system/battery-threshold.service
+2.1 Put this inside the service:
+```
+[Unit]
+Description=Set battery charge threshold
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c 'echo 80 > /sys/class/power_supply/BAT0/charge_control_end_threshold'
+
+[Install]
+WantedBy=multi-user.target
+```
+2.2 Enable and start the service:
+sudo systemctl daemon-reload
+sudo systemctl enable --now battery-threshold.service
+
+
+# Install PostgreSQL
+1. Install the package:
+sudo pacman -Syu postgresql
+2. Init the database cluster(the data directory):
+sudo -iu postgres
+initdb --locale $LANG -E UTF8 -D '/var/lib/postgres/data'
+exit
+3. Start and enable the service:
+sudo systemctl enable --now postgresql
+4. Start the database server(output from above command):
+pg_ctl -D /var/lib/postgres/data -l logfile start
+5. Create user and db with the following commands:
+CREATE USER myuser WITH ENCRYPTED PASSWORD 'mypassword';
+CREATE DATABASE mydb OWNER myuser;
+GRANT ALL PRIVILEGES ON DATABASE mydb TO myuser;
+6. Connect with normal user:
+psql -U myuser -d mydb -h localhost
+
+# Setup shared drive between windows and linux(and also access full windows filesystem):
+1. Disable Fast Startup and hibernation on windows
+2. Create new NTFS volume/drive in disk management
+3. sudo pacman -S ntfs-3g # Install ntfs-3g on arch linux
+4. Identify windows partitions\
+lsblk
+5. Create mount points:
+sudo mkdir /mnt/windows
+sudo mkdir /mnt/shared
+6. Mount the Windows filesystem and shared partition manually:
+sudo mount -t ntfs-3g /dev/sdXN /mnt/windows # Make sure bitlocker is fully disabled(not in setup mode)
+sudo mount -t ntfs-3g /dev/sdYM /mnt/shared
+7. Configure automatic mounting on boot
+7.1 Find UUIDs of the partitions:
+sudo blkid
+7.2 Edit /etc/fstab:
+UUID=the-shared-partition-uuid /mnt/shared ntfs-3g defaults,uid=1000,gid=1000,dmask=027,fmask=137 0 0
+

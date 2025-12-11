@@ -86,7 +86,7 @@ function custom_git_status() {
       " M"|" D") ((modified++)) ;;
       "MM"|"AM"|"RM") ((staged++)); ((modified++)) ;;
     esac
-  done < <(git status --porcelain 2>/dev/null)
+  done < <(git status --porcelain -uall 2>/dev/null)
 
   # === Show Status Indicators ===
   local has_changes=false

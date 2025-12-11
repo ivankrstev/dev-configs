@@ -1,0 +1,341 @@
+# ============================================
+# Pure Zsh Configuration (No Oh My Zsh)
+# With Custom Git Theme
+# ============================================
+
+# === Enable Colors and Prompt Expansion ===
+autoload -U colors && colors
+setopt PROMPT_SUBST
+
+# === History Configuration ===
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_FIND_NO_DUPS
+setopt SHARE_HISTORY
+setopt APPEND_HISTORY
+setopt INC_APPEND_HISTORY
+
+# === Completion System ===
+autoload -Uz compinit
+compinit
+
+# Completion styling
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'  # Case-insensitive
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
+# ============================================
+# CUSTOM GIT THEME (mygit)
+# ============================================
+
+# === Color Definitions ===
+# local dir_color="%F{blue}"
+# local git_branch_color="%F{yellow}"
+# local git_clean_color="%F{green}"
+# local git_dirty_color="%F{red}"
+# local git_ahead_color="%F{magenta}"
+# local git_behind_color="%F{yellow}"
+# local prompt_color="%F{cyan}"
+
+local dir_color="%F{37}"          # Cyan
+local git_branch_color="%F{136}"  # Yellow
+local git_clean_color="%F{82}"    # Green
+local git_dirty_color="%F{160}"   # Red
+local git_ahead_color="%F{166}"   # Orange
+local git_behind_color="%F{125}"  # Magenta
+
+local reset_color="%f"
+
+# === Symbol Definitions ===
+SYMBOL_GIT_BRANCH=""
+SYMBOL_GIT_CLEAN="✓"
+SYMBOL_GIT_DIRTY="✗"
+SYMBOL_AHEAD=""
+SYMBOL_BEHIND="↓"
+SYMBOL_DIVERGED="↕"
+SYMBOL_STAGED="+"
+SYMBOL_MODIFIED=""
+SYMBOL_UNTRACKED=""
+SYMBOL_STASHED=""
+SYMBOL_CONFLICTS="!"
+
+# === Main Git Status Function ===
+function custom_git_status() {
+  # Check if we're in a git repository
+  if !  git rev-parse --git-dir >/dev/null 2>&1; then
+    return
+  fi
+
+  # Get branch name or commit hash
+  local branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+
+  # Start building output
+  local output=" on ${git_branch_color}${SYMBOL_GIT_BRANCH} ${branch}${reset_color}"
+
+  # === Check Upstream Status (Push/Pull) ===
+  local upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)
+  if [[ -n "$upstream" ]]; then
+    local ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null)
+    local behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null)
+
+    if [[ "$ahead" -gt 0 ]] && [[ "$behind" -gt 0 ]]; then
+      output+=" ${git_ahead_color}${SYMBOL_DIVERGED}${ahead}/${behind}${reset_color}"
+    elif [[ "$ahead" -gt 0 ]]; then
+      output+=" ${git_ahead_color}${SYMBOL_AHEAD}${ahead}${reset_color}"
+    elif [[ "$behind" -gt 0 ]]; then
+      output+=" ${git_behind_color}${SYMBOL_BEHIND}${behind}${reset_color}"
+    fi
+  fi
+
+  # === Check Working Tree Status ===
+  local staged=0
+  local modified=0
+  local untracked=0
+  local conflicts=0
+
+  # Parse git status porcelain output
+  while IFS= read -r line; do
+    case "${line:0:2}" in
+      "??") ((untracked++)) ;;
+      "UU"|"AA"|"DD") ((conflicts++)) ;;
+      "M "|"A "|"D "|"R "|"C ") ((staged++)) ;;
+      " M"|" D") ((modified++)) ;;
+      "MM"|"AM"|"RM") ((staged++)); ((modified++)) ;;
+    esac
+  done < <(git status --porcelain 2>/dev/null)
+
+  # === Show Status Indicators ===
+  local has_changes=false
+
+  if [[ $conflicts -gt 0 ]]; then
+    output+=" ${git_dirty_color}${SYMBOL_CONFLICTS}${conflicts}${reset_color}"
+    has_changes=true
+  fi
+
+  if [[ $staged -gt 0 ]]; then
+    output+=" ${git_ahead_color}${SYMBOL_STAGED}${staged}${reset_color}"
+    has_changes=true
+  fi
+
+  if [[ $modified -gt 0 ]]; then
+    output+=" ${git_dirty_color}${SYMBOL_MODIFIED}${modified}${reset_color}"
+    has_changes=true
+  fi
+
+  if [[ $untracked -gt 0 ]]; then
+    output+=" ${git_dirty_color}${SYMBOL_UNTRACKED}${untracked}${reset_color}"
+    has_changes=true
+  fi
+
+  # Check for stashes
+  local stash_count=$(git stash list 2>/dev/null | wc -l | tr -d ' ')
+  if [[ $stash_count -gt 0 ]]; then
+    output+=" ${git_ahead_color}${SYMBOL_STASHED}${stash_count}${reset_color}"
+  fi
+
+  # === Overall Clean/Dirty Indicator ===
+  if [[ "$has_changes" == "false" ]]; then
+    output+=" ${git_clean_color}${SYMBOL_GIT_CLEAN}${reset_color}"
+  fi
+
+  echo "$output"
+}
+
+# === Left Prompt ===
+# PROMPT='${dir_color}%1~${reset_color}$(custom_git_status) ${prompt_color}❯${reset_color} '
+PROMPT='${dir_color}%~${reset_color}$(custom_git_status)
+${dir_color} ${reset_color} '
+
+# === Right Prompt ===
+RPROMPT='%F{240}%D{%H:%M:%S}%f'
+
+# ============================================
+# Git Aliases
+# ============================================
+
+alias gst='git status'
+alias gaa='git add --all'
+alias ga='git add'
+alias gc='git commit'
+alias gcm='git commit -m'
+alias gcam='git commit -am'
+alias gca='git commit --amend'
+alias gcan='git commit --amend --no-edit'
+alias gp='git push'
+alias gpl='git pull'
+alias gf='git fetch'
+alias gco='git checkout'
+alias gcb='git checkout -b'
+alias gb='git branch'
+alias gba='git branch -a'
+alias gbd='git branch -d'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias glog='git log --oneline --decorate --graph --all'
+alias glg='git log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit'
+alias gs='git status -sb'
+alias gm='git merge'
+alias grb='git rebase'
+alias grbi='git rebase -i'
+alias grbc='git rebase --continue'
+alias grba='git rebase --abort'
+alias gsta='git stash'
+alias gstp='git stash pop'
+alias gstl='git stash list'
+alias gstd='git stash drop'
+alias gclean='git clean -fd'
+alias greset='git reset --hard'
+
+# ============================================
+# General Aliases
+# ============================================
+
+alias c='clear'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias ls='ls --color=auto'
+alias ll='ls -lah'
+alias la='ls -A'
+alias l='ls -CF'
+alias grep='grep --color=auto'
+alias h='history'
+alias hs='history | grep'
+alias hsi='history | grep -i'
+
+# ============================================
+# Custom Functions
+# ============================================
+
+# Create directory and cd into it
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# Quick git commit with message
+gcq() {
+  git add -A && git commit -m "$1"
+}
+
+# Quick git add, commit, and push
+gacp() {
+  git add -A && git commit -m "$1" && git push
+}
+
+# Extract any archive
+extract() {
+  if [ -f $1 ]; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1     ;;
+      *.tar.gz)    tar xzf $1     ;;
+      *.bz2)       bunzip2 $1     ;;
+      *.rar)       unrar e $1     ;;
+      *.gz)        gunzip $1      ;;
+      *.tar)       tar xf $1      ;;
+      *.tbz2)      tar xjf $1     ;;
+      *.tgz)       tar xzf $1     ;;
+      *.zip)       unzip $1       ;;
+      *.Z)         uncompress $1  ;;
+      *.7z)        7z x $1        ;;
+      *)     echo "'$1' cannot be extracted via extract()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+# Find files by name
+ff() {
+  find . -type f -iname "*$1*"
+}
+
+# Find directories by name
+fd() {
+  find . -type d -iname "*$1*"
+}
+
+# ============================================
+# Key Bindings
+# ============================================
+
+# ESC ESC to add/remove sudo
+sudo-command-line() {
+    [[ -z $BUFFER ]] && LBUFFER="$(fc -ln -1)"
+    if [[ $BUFFER == sudo\ * ]]; then
+        LBUFFER="${LBUFFER#sudo }"
+    else
+        LBUFFER="sudo $LBUFFER"
+    fi
+}
+zle -N sudo-command-line
+bindkey "\e\e" sudo-command-line
+
+# Ctrl+Arrow keys for word navigation
+bindkey "^[[1;5C" forward-word
+bindkey "^[[1;5D" backward-word
+
+# ============================================
+# Load External Plugins (Manual)
+# ============================================
+
+# Load zsh-autosuggestions
+# git clone https://github.com/zsh-users/zsh-autosuggestions.git ~/.zsh/plugins/zsh-autosuggestions
+if [[ -f ~/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
+  source ~/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+  ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=240'
+  ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+fi
+
+# Load zsh-interactive-cd
+# git clone https://github.com/changyuheng/zsh-interactive-cd ~/.zsh/plugins/zsh-interactive-cd
+if [[ -f ~/.zsh/plugins/zsh-interactive-cd/zsh-interactive-cd.plugin.zsh ]]; then
+    source ~/.zsh/plugins/zsh-interactive-cd/zsh-interactive-cd.plugin.zsh
+fi
+
+# Load zsh-syntax-highlighting (MUST BE LAST)
+# git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ~/.zsh/plugins/zsh-syntax-highlighting
+if [[ -f ~/.zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
+  source ~/.zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
+
+# ============================================
+# Environment Variables
+# ============================================
+
+export EDITOR='nano'
+export VISUAL='nano'
+export LANG=en_US.UTF-8
+
+# Colored man pages
+export LESS_TERMCAP_mb=$'\e[1;32m'
+export LESS_TERMCAP_md=$'\e[1;32m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;4;31m'
+
+# ============================================
+# Additional Settings
+# ============================================
+
+# Enable zmv for bulk renaming
+autoload -U zmv
+
+# Enable auto cd (type directory name to cd into it)
+setopt AUTO_CD
+
+# Enable extended globbing
+setopt EXTENDED_GLOB
+
+# Don't beep
+unsetopt BEEP
+
+# ============================================
+# Optional: Load additional configurations
+# ============================================
+
+# Load local configuration if it exists
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local

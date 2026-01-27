@@ -1,0 +1,89 @@
+# #!/bin/bash
+# set -euo pipefail # Strict mode(ensure script fails fast and safely)
+
+# echo "🔍 Running pre-commit checks..."
+# echo ""
+
+# SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# VALIDATOR="$SCRIPT_DIR/commit-msg-validator.sh"
+
+# RED='\033[0;31m'
+# GREEN='\033[0;32m'
+# NC='\033[0m'
+
+# printError() {
+#     echo -e "${RED}[ERROR]${NC} $1"
+# }
+
+# printSuccess() {
+#     echo -e "${GREEN}[SUCCESS]${NC} $1"
+# }
+
+# # ===========================
+# # Trailing newline check
+# # ===========================
+# STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM) # Get staged files (added/copied/modified) 213123123123123123213123123213123213123213123123231
+# FAIL=0 # Flag to indicate if any file fails the check
+
+# for file in $STAGED_FILES; do
+#   # Skip deleted or non-regular files
+#   [ -f "$file" ] || continue
+
+#   # Check if file ends with a newline (POSIX text file requirement)
+#   # tail -c 1 prints last byte; if empty, file is empty; if not '\n', fail
+#   last_byte=$(tail -c 1 "$file" || true)
+# #   echo "last_byte: '$last_byte'"
+
+#   if [ -n "$last_byte" ] && [ "$last_byte" != $'\n' ]; then
+#     printError "File lacks trailing newline: $file"
+#     FAIL=1
+#   fi
+# done
+
+# if [ "$FAIL" -ne 0 ]; then
+#   echo "Commit aborted. Please add trailing newlines to files above."
+#   exit 1
+# fi
+
+
+
+# # ============================================
+# # Protected branch check
+# # ============================================
+# # BRANCH=$(git rev-parse --abbrev-ref HEAD)
+# # PROTECTED_BRANCHES="^(main|master|production|release)$"
+
+# # if [[ "$BRANCH" =~ $PROTECTED_BRANCHES ]]; then
+# #     echo "❌ Direct commits to '$BRANCH' are not allowed!"
+# #     exit 1
+# # fi
+
+# # # Check if package.json is staged
+# # package_json_staged=$(git diff --cached --name-only | grep -c "package.json")
+# # # Check if package-lock.json is staged
+# # package_lock_staged=$(git diff --cached --name-only | grep -c "package-lock.json")
+
+# # # If package.json is staged but package-lock.json is not
+# # if [ "$package_json_staged" -eq 1 ] && [ "$package_lock_staged" -eq 0 ]; then
+# #   # Get the diff of package.json to check what changed
+# #   package_json_diff=$(git diff --cached package.json)
+
+# #   # Check if only scripts section changed (or other non-dependency fields)
+# #   # This looks for changes in dependencies, devDependencies, peerDependencies, optionalDependencies
+# #   dependency_changes=$(echo "$package_json_diff" | grep -E '^\+.*"(dependencies|devDependencies|peerDependencies|optionalDependencies)"' | wc -l)
+
+# #   if [ "$dependency_changes" -gt 0 ]; then
+# #     echo "❌ Error: package.json has dependency changes but package-lock.json is not staged"
+# #     echo "Please run 'npm install' and stage package-lock.json"
+# #     exit 1
+# #   fi
+
+# #   echo "✓ package.json staged without package-lock.json (non-dependency changes only)"
+# # fi
+
+# # ============================================
+# # Success
+# # ============================================
+# echo ""
+# echo "✅ All pre-commit checks passed!"
+# exit 0

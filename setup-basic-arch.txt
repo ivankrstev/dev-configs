@@ -13,6 +13,25 @@ sudo groupadd docker # If there is no docker group, create it
 sudo usermod -aG docker $USER # Add the current user to the docker group
 
 
+# Enable num keys on startup(SDDM)
+1. sudo mkdir -p /etc/sddm.conf.d
+2. echo -e "[General]\nNumlock=on" | sudo tee /etc/sddm.conf.d/numlock.conf
+3. Reboot
+
+
+# Fix brightness
+1. sudo nano /boot/refind_linux.conf
+2. Add this at the end of default entry: amdgpu.backlight=0
+
+
+# Set custom reFind theme
+1. git clone https://github.com/Paradox-AT/rEFInd-minimal-rog.git refind/themes/rEFInd-minimal-rog
+1.1 (Optional) Copy official EndeavourOS icon to rEFInd theme icons directory for proper boot menu display:
+sudo cp /usr/share/endeavouros/EndeavourOS-icon.png /boot/efi/EFI/refind/themes/rEFInd-minimal-rog/icons/os_endeavouros.png
+2. Add this line at the end of refind.conf:
+include themes/rEFInd-minimal-rog/theme.conf
+
+
 # Enable Secure Boot with reFind
 1. sudo pacman -S refind sbctl
 2. sudo refind-install # Make sure the EFI partition is mounted
@@ -98,4 +117,3 @@ sudo mount -t ntfs-3g /dev/sdYM /mnt/shared
 sudo blkid
 7.2 Edit /etc/fstab:
 UUID=the-shared-partition-uuid /mnt/shared ntfs-3g defaults,uid=1000,gid=1000,dmask=027,fmask=137 0 0
-

@@ -1,0 +1,11 @@
+In order to get ahead/behind status in zsh terminal, we must set upstream for the branches:
+# If we want local main to track origin/main:
+git branch --set-upstream-to=origin/main main
+# or, when you're already on main:
+git branch --set-upstream-to=origin/main
+
+
+Alternatively, if you are pushing main for the first time:
+git push --set-upstream origin main   # same as: git push -u origin main
+
+

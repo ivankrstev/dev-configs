@@ -2,6 +2,12 @@
 # External Plugins
 # ============================================
 
+# Load nvm (Node Version Manager)
+export NVM_DIR="$HOME/.nvm"
+if [[ -f "/usr/share/nvm/init-nvm.sh" ]]; then
+  source "/usr/share/nvm/init-nvm.sh"
+fi
+
 PLUGIN_DIR="$HOME/.zsh/plugins"
 
 # Load zsh-autosuggestions

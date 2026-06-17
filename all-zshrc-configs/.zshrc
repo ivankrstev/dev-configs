@@ -15,6 +15,7 @@ config_files=(
   aliases      # Aliases
   functions    # Custom functions
   keybindings  # Key bindings
+  # highlight    # Custom syntax highlighting (MUST be before plugins)
   plugins      # External plugins (loaded late)
 )
 

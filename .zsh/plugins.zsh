@@ -26,6 +26,6 @@ fi
 
 # Load zsh-syntax-highlighting (MUST BE LAST)
 # git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $PLUGIN_DIR/zsh-syntax-highlighting
-if [[ -f "$PLUGIN_DIR/zsh-syntax-highlighting/zsh-syntax-highlighting. zsh" ]]; then
+if [[ -f "$PLUGIN_DIR/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
   source "$PLUGIN_DIR/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 fi

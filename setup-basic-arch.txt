@@ -117,3 +117,58 @@ sudo mount -t ntfs-3g /dev/sdYM /mnt/shared
 sudo blkid
 7.2 Edit /etc/fstab:
 UUID=the-shared-partition-uuid /mnt/shared ntfs-3g defaults,uid=1000,gid=1000,dmask=027,fmask=137 0 0
+
+
+# Setup snapshots in arch linux(Cachy OS)
+1. Check if the system uses Btrfs and subvolumes
+1.1 Verify the filesystem: `lsblk -f`
+    It should show btrfs (Example: nvme0n1p2  btrfs   /)
+1.2 Check mounted subvolumes: `mount | grep btrfs`
+    It should show something like this:
+    subvol=@
+    subvol=@home
+    subvol=@cache
+    subvol=@log
+1.3 List actual subvolumes: `sudo btrfs subvolume list /`
+    The output should look like this:
+    ID 256 path @
+    ID 257 path @home
+    ID 258 path @log
+    ID 259 path @cache
+2. Check if snapshot directory exists: `ls -ld /.snapshots`
+2.1 If not configured and exists, remove it: `sudo rm -rf /.snapshots` or `sudo btrfs subvolume delete /.snapshots`
+2.2 Don't create manually folder or subvolume .snapshots(the snapper will create it)
+3. Install snapper: `sudo pacman -S snapper`
+4. Create the Snapper root config: `sudo snapper -c root create-config /`
+4.1 Check if config file is created: `sudo ls /etc/snapper/configs`
+4.2 Check if subvolume .snapshots is created: `sudo btrfs subvolume list /`
+    Output should be like this:
+    ID xxx path .snapshots
+    ID xxx path .snapshots/1/snapshot
+4.3 Check snapper list: `sudo snapper -c root list`
+5. Enable automatic snapshots:
+    `sudo systemctl enable --now snapper-timeline.timer`
+    `sudo systemctl enable --now snapper-cleanup.timer`
+5.1 Verify with: `systemctl list-timers | grep snapper`
+6. Configuration:
+6.1 Configure snapshot frequency: `sudo nano /etc/snapper/configs/root`
+    Set these variables inside:
+    `# create hourly snapshots
+    TIMELINE_CREATE="yes"
+
+    # cleanup hourly snapshots after some time
+    TIMELINE_CLEANUP="yes"
+
+    # limits for timeline cleanup
+    TIMELINE_MIN_AGE="3600"
+    TIMELINE_LIMIT_HOURLY="6"
+    TIMELINE_LIMIT_DAILY="7"
+    TIMELINE_LIMIT_WEEKLY="4"
+    TIMELINE_LIMIT_MONTHLY="3"
+    TIMELINE_LIMIT_QUARTERLY="2"
+    TIMELINE_LIMIT_YEARLY="1"`
+6.2 Setup automatic snapshots before every system update: `sudo pacman -S snap-pac`
+6.3 Prevent slowdown by preventing updatedb indexing .snapshots: `sudo nano /etc/updatedb.conf`
+    Add .snapshots to PRUNENAMES(PRUNENAMES = ".snapshots") in /etc/updatedb.conf
+7(optional). Test snapshot creation: `sudo snapper -c root create --description "first snapshot test"`
+7.1 List snapshots: `sudo snapper list`

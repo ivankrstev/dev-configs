@@ -30,6 +30,7 @@ function printable_or_fallback() {
 }
 
 # === Symbol Definitions ===
+# https://www.nerdfonts.com/cheat-sheet
 # Directory symbol
 SYMBOL_PROMPT=$(printable_or_fallback "" "➜")
 # Git symbols
@@ -60,8 +61,8 @@ function custom_git_status() {
   # === Check Upstream Status (Push/Pull) ===
   local upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)
   if [[ -n "$upstream" ]]; then
-    local ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null)
-    local behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null)
+    local ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null || echo 0)
+    local behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
 
     if [[ "$ahead" -gt 0 ]] && [[ "$behind" -gt 0 ]]; then
       output+=" ${git_diverged_color}${ahead}/${behind}${SYMBOL_DIVERGED}${reset_color}"
@@ -76,19 +77,33 @@ function custom_git_status() {
   fi
 
   # === Check Working Tree Status ===
-  local staged=0
-  local modified=0
-  local untracked=0
-  local conflicts=0
+  local staged=0 # Count of staged changes
+  local modified=0 # Count of modified but unstaged changes
+  local untracked=0 # Count of untracked files
+  local conflicts=0 # Count of merge conflicts
 
   # Parse git status porcelain output
   while IFS= read -r line; do
-    case "${line:0:2}" in
-      "??") ((untracked++)) ;;
-      "UU"|"AA"|"DD") ((conflicts++)) ;;
-      "M "|"A "|"D "|"R "|"C ") ((staged++)) ;;
-      " M"|" D") ((modified++)) ;;
-      "MM"|"AM"|"RM") ((staged++)); ((modified++)) ;;
+    local git_status="${line:0:2}"
+
+    case "$git_status" in
+      "??")
+        ((untracked++))
+        ;;
+
+      "DD"|"AU"|"UD"|"UA"|"DU"|"AA"|"UU")
+        ((conflicts++))
+        ;;
+
+      *)
+        if [[ "${git_status:0:1}" != " " && "${git_status:0:1}" != "?" ]]; then
+          ((staged++))
+        fi
+
+        if [[ "${git_status:1:1}" != " " ]]; then
+          ((modified++))
+        fi
+        ;;
     esac
   done < <(git status --porcelain -uall 2>/dev/null)
 

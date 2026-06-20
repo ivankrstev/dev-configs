@@ -14,6 +14,7 @@ local git_modified_color="%F{yellow}"  # Yellow
 local git_untracked_color="%F{red}"    # Red
 local git_stashed_color="%F{cyan}"     # Cyan
 local git_conflicts_color="%F{red}"    # Red
+local git_warning_color="%F{red}"      # Red
 local reset_color="%f"                 # Reset
 
 function printable_or_fallback() {
@@ -34,12 +35,12 @@ SYMBOL_PROMPT=$(printable_or_fallback "" "➜")
 # Git symbols
 SYMBOL_GIT_BRANCH=$(printable_or_fallback "" "") # ⎇
 SYMBOL_GIT_CLEAN=$(printable_or_fallback "" "✔")
-SYMBOL_AHEAD=$(printable_or_fallback "🠝" "↑")
-SYMBOL_BEHIND=$(printable_or_fallback "🠟" "↓")
+SYMBOL_AHEAD=$(printable_or_fallback "" "↑")
+SYMBOL_BEHIND=$(printable_or_fallback "" "↓")
 SYMBOL_DIVERGED=$(printable_or_fallback "󰙁" "↑↓")
 SYMBOL_STAGED=$(printable_or_fallback "󰓎" "*")
-SYMBOL_MODIFIED=$(printable_or_fallback "" "~")
-SYMBOL_UNTRACKED=$(printable_or_fallback "" "?")
+SYMBOL_MODIFIED=$(printable_or_fallback "" "M")
+SYMBOL_UNTRACKED=$(printable_or_fallback "" "?")
 SYMBOL_STASHED=$(printable_or_fallback "󰆓" "$")
 SYMBOL_CONFLICTS=$(printable_or_fallback "" "!!")
 
@@ -63,12 +64,15 @@ function custom_git_status() {
     local behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null)
 
     if [[ "$ahead" -gt 0 ]] && [[ "$behind" -gt 0 ]]; then
-      output+=" ${git_diverged_color}${SYMBOL_DIVERGED}${ahead}/${behind}${reset_color}"
+      output+=" ${git_diverged_color}${ahead}/${behind}${SYMBOL_DIVERGED}${reset_color}"
     elif [[ "$ahead" -gt 0 ]]; then
-      output+=" ${git_sync_color}${SYMBOL_AHEAD}${ahead}${reset_color}"
+      output+=" ${git_sync_color}${ahead}${SYMBOL_AHEAD}${reset_color}"
     elif [[ "$behind" -gt 0 ]]; then
-      output+=" ${git_sync_color}${SYMBOL_BEHIND}${behind}${reset_color}"
+      output+=" ${git_sync_color}${behind}${SYMBOL_BEHIND}${reset_color}"
     fi
+  else
+    # Show a warning if there's no upstream set
+    output+=" ${git_warning_color}no-up${reset_color}"
   fi
 
   # === Check Working Tree Status ===
@@ -92,29 +96,29 @@ function custom_git_status() {
   local has_changes=false
 
   if [[ $conflicts -gt 0 ]]; then
-    output+=" ${git_conflicts_color}${SYMBOL_CONFLICTS}${conflicts}${reset_color}"
+    output+=" ${git_conflicts_color}${conflicts}${SYMBOL_CONFLICTS}${reset_color}"
     has_changes=true
   fi
 
   if [[ $staged -gt 0 ]]; then
-    output+=" ${git_staged_color}${SYMBOL_STAGED}${staged}${reset_color}"
+    output+=" ${git_staged_color}${staged}${SYMBOL_STAGED}${reset_color}"
     has_changes=true
   fi
 
   if [[ $modified -gt 0 ]]; then
-    output+=" ${git_modified_color}${SYMBOL_MODIFIED}${modified}${reset_color}"
+    output+=" ${git_modified_color}${modified}${SYMBOL_MODIFIED}${reset_color}"
     has_changes=true
   fi
 
   if [[ $untracked -gt 0 ]]; then
-    output+=" ${git_untracked_color}${SYMBOL_UNTRACKED}${untracked}${reset_color}"
+    output+=" ${git_untracked_color}${untracked}${SYMBOL_UNTRACKED}${reset_color}"
     has_changes=true
   fi
 
   # Check for stashes
   local stash_count=$(git stash list 2>/dev/null | wc -l | tr -d ' ')
   if [[ $stash_count -gt 0 ]]; then
-    output+=" | ${git_stashed_color}${SYMBOL_STASHED}${stash_count}${reset_color}"
+    output+=" | ${git_stashed_color}${stash_count}${SYMBOL_STASHED}${reset_color}"
   fi
 
   # === Overall Clean/Dirty Indicator ===

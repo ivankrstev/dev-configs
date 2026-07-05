@@ -100,25 +100,6 @@ GRANT ALL PRIVILEGES ON DATABASE mydb TO myuser;
 6. Connect with normal user:
 psql -U myuser -d mydb -h localhost
 
-# Setup shared drive between windows and linux(and also access full windows filesystem):
-1. Disable Fast Startup and hibernation on windows
-2. Create new NTFS volume/drive in disk management
-3. sudo pacman -S ntfs-3g # Install ntfs-3g on arch linux
-4. Identify windows partitions\
-lsblk
-5. Create mount points:
-sudo mkdir /mnt/windows
-sudo mkdir /mnt/shared
-6. Mount the Windows filesystem and shared partition manually:
-sudo mount -t ntfs-3g /dev/sdXN /mnt/windows # Make sure bitlocker is fully disabled(not in setup mode)
-sudo mount -t ntfs-3g /dev/sdYM /mnt/shared
-7. Configure automatic mounting on boot
-7.1 Find UUIDs of the partitions:
-sudo blkid
-7.2 Edit /etc/fstab:
-UUID=the-shared-partition-uuid /mnt/shared ntfs-3g defaults,uid=1000,gid=1000,dmask=027,fmask=137 0 0
-
-
 # Setup snapshots in arch linux(Cachy OS)
 1. Check if the system uses Btrfs and subvolumes
 1.1 Verify the filesystem: `lsblk -f`

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Service
+MimeType=inode/directory;
+Actions=c_viewDiskUsage;
+X-KDE-Priority=TopLevel
+X-KDE-RequiredNumberOfUrls=1
+
+[Desktop Action c_viewDiskUsage]
+Name=View Disk Usage Statistics
+Icon=filelight
+Exec=filelight %u

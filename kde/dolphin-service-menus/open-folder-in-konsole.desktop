@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Service
+MimeType=inode/directory;
+# Prefix action IDs with a_, b_, etc. to control menu order
+# The b_ prefix places this action after actions prefixed with a_
+Actions=b_openInKonsole;
+X-KDE-Priority=TopLevel
+X-KDE-RequiredNumberOfUrls=1
+
+[Desktop Action b_openInKonsole]
+Name=Open in Konsole
+Icon=utilities-terminal
+Exec=konsole --workdir %f

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Service
+MimeType=inode/directory;application/octet-stream;
+# Prefix action IDs with a_, b_, etc. to control menu order
+# The a_ prefix places this action before actions prefixed with b_, c_, etc.
+Actions=a_openWithVSCode;
+X-KDE-Priority=TopLevel
+X-KDE-RequiredNumberOfUrls=1
+
+[Desktop Action a_openWithVSCode]
+Name=Open with VS Code
+# If icon doesn't show up, check the app details in `/usr/share/applications`
+Icon=vscode
+Exec=code --new-window %f

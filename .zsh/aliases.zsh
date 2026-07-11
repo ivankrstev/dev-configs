@@ -10,13 +10,13 @@ else
 fi
 
 # ls aliases using eza
-alias ls='eza -al --color=always --group-directories-first --icons' # preferred listing (long format with hidden files)
-alias la='eza -a --color=always --group-directories-first --icons'  # all files and dirs (grid format)
-alias ll='eza -l --color=always --group-directories-first --icons'  # long format without hidden files and dirs
-alias lt='eza -aT --color=always --group-directories-first --icons --ignore-glob=".git"' # tree listing (ignore .git directory)
-alias l.="eza -a1 --icons --group-directories-first -d .*" # show only dotfiles (both files and dirs)
-alias lsd='eza -al --color=always --group-directories-first --icons --only-dirs' # list only all directories (no files)
-alias lsf='eza -al --color=always --group-directories-first --icons --only-files' # list only all files (no dirs)
+alias ls='eza -al --color=always --group-directories-first --icons=auto' # preferred listing (long format with hidden files)
+alias la='eza -a --color=always --group-directories-first --icons=auto'  # all files and dirs (grid format)
+alias ll='eza -l --color=always --group-directories-first --icons=auto'  # long format without hidden files and dirs
+alias lt='eza -aT --color=always --group-directories-first --icons=auto --ignore-glob=".git"' # tree listing (ignore .git directory)
+alias l.="eza -a1 --icons=auto --group-directories-first -d .*" # show only dotfiles (both files and dirs)
+alias lsd='eza -al --color=always --group-directories-first --icons=auto --only-dirs' # list only all directories (no files)
+alias lsf='eza -al --color=always --group-directories-first --icons=auto --only-files' # list only all files (no dirs)
 
 # === General Aliases ===
 alias c='clear'

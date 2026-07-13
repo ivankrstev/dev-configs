@@ -1,10 +1,14 @@
 # ============================================
 # Environment Variables
 # ============================================
-
 export EDITOR='nano'
 export VISUAL='nano'
 export LANG=en_US.UTF-8
+
+# Theme settings
+# Set THEME_NERD_FONT to 1 to enable Nerd Font symbols, or 0 to use fallback symbols.
+# If set to 1, this symbol is printed: , otherwise this symbol is printed: >
+export THEME_NERD_FONT="1"
 
 # Colored man pages
 export LESS_TERMCAP_mb=$'\e[1;32m'

@@ -17,33 +17,37 @@ local git_conflicts_color="%F{red}"    # Red
 local git_warning_color="%F{red}"      # Red
 local reset_color="%f"                 # Reset
 
-function printable_or_fallback() {
-  local test_char="$1"
-  local fallback="$2"
+# Set default value for THEME_NERD_FONT if not already configured/exported
+: ${THEME_NERD_FONT:="0"}
+# You can change THEME_NERD_FONT in your .zshrc or env.zsh to control whether to use Nerd Font symbols (1) or fallback symbols (0).
 
-  # zsh: test-width > 0 when symbol is printable
-  if [[ ${#${(%)test_char}} -gt 0 ]]; then
-    echo "$test_char"
+function symbol_or_fallback() {
+  local nerd_symbol="$1"
+  local fallback_symbol="$2"
+
+  # if (( THEME_NERD_FONT )); then
+  if [[ "$THEME_NERD_FONT" == "1" ]]; then
+    print -r -- "$nerd_symbol"
   else
-    echo "$fallback"
+    print -r -- "$fallback_symbol"
   fi
 }
 
 # === Symbol Definitions ===
 # https://www.nerdfonts.com/cheat-sheet
 # Directory symbol
-SYMBOL_PROMPT=$(printable_or_fallback "" "➜")
+SYMBOL_PROMPT=$(symbol_or_fallback "" "➜")
 # Git symbols
-SYMBOL_GIT_BRANCH=$(printable_or_fallback "" "") # ⎇
-SYMBOL_GIT_CLEAN=$(printable_or_fallback "" "✔")
-SYMBOL_AHEAD=$(printable_or_fallback "" "↑")
-SYMBOL_BEHIND=$(printable_or_fallback "" "↓")
-SYMBOL_DIVERGED=$(printable_or_fallback "󰙁" "↑↓")
-SYMBOL_STAGED=$(printable_or_fallback "󰓎" "*")
-SYMBOL_MODIFIED=$(printable_or_fallback "" "M")
-SYMBOL_UNTRACKED=$(printable_or_fallback "" "?")
-SYMBOL_STASHED=$(printable_or_fallback "󰆓" "$")
-SYMBOL_CONFLICTS=$(printable_or_fallback "" "!!")
+SYMBOL_GIT_BRANCH=$(symbol_or_fallback "" ">")
+SYMBOL_GIT_CLEAN=$(symbol_or_fallback "" "✔")
+SYMBOL_AHEAD=$(symbol_or_fallback "" "↑")
+SYMBOL_BEHIND=$(symbol_or_fallback "" "↓")
+SYMBOL_DIVERGED=$(symbol_or_fallback "󰙁" "↑↓")
+SYMBOL_STAGED=$(symbol_or_fallback "󰓎" "*")
+SYMBOL_MODIFIED=$(symbol_or_fallback "" "M")
+SYMBOL_UNTRACKED=$(symbol_or_fallback "" "?")
+SYMBOL_STASHED=$(symbol_or_fallback "󰆓" "$")
+SYMBOL_CONFLICTS=$(symbol_or_fallback "" "!!")
 
 # === Main Git Status Function ===
 function custom_git_status() {

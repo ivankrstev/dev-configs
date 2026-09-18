@@ -1,15 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ============================================================================
 # Git Commit Message Validator (commit-msg hook)
 # ============================================================================
 #
-# Purpose: Validates commit messages against Conventional Commits format
-# Usage:   Invoked automatically by Git as commit-msg hook
+# Purpose: Validates commit messages against a Conventional Commits-based policy
+# Usage:   Invoked automatically by Git as a commit-msg hook
 #
 # IMPORTANT: This file must be executable!
-#            Run: chmod +x .git/hooks/commit-msg
+#            Run: chmod +x <path-to-hook>/commit-msg
 #
+# For a global hooks directory:
+#   git config --global core.hooksPath <path-to-hook>
 # ============================================================================
 
 # Color codes for output
@@ -20,103 +22,101 @@ NC='\033[0m' # No Color
 
 # Function to print error messages
 printError() {
-    echo -e "${RED}[COMMIT REJECTED]${NC} $1"
+    printf '%b\n' "${RED}[COMMIT REJECTED]${NC} $1"
 }
 
 # Function to print success messages
 printSuccess() {
-    echo -e "${GREEN}[COMMIT ACCEPTED]${NC} $1"
+    printf '%b\n' "${GREEN}[COMMIT ACCEPTED]${NC} $1"
 }
 
 # Function to print warnings
 printWarning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    printf '%b\n' "${YELLOW}[WARNING]${NC} $1"
 }
 
-# Step 1: Read commit message from the file provided by Git
-COMMIT_MSG_FILE="$1"
-if [ -z "$COMMIT_MSG_FILE" ] || [ ! -f "$COMMIT_MSG_FILE" ]; then
+# Read the commit message file provided by Git
+COMMIT_MSG_FILE="${1:-}"
+
+if [[ -z "$COMMIT_MSG_FILE" || ! -f "$COMMIT_MSG_FILE" ]]; then
     printError "Commit message file not found!"
     exit 1
 fi
-COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
 
-# Step 2: Extract the first line of the commit message
-FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
-FIRST_LINE_LENGTH=${#FIRST_LINE}
+# Read the commit subject
+IFS= read -r FIRST_LINE < "$COMMIT_MSG_FILE"
 
-# Step 3: Bypass validation for merge, revert and squash commits
-if echo "$FIRST_LINE" | grep -qE "^Merge "; then
-    printSuccess "Bypass: merge commit detected."
-    exit 0
-fi
-
-if echo "$FIRST_LINE" | grep -qE "^Revert "; then
-    printSuccess "Bypass: revert commit detected."
-    exit 0
-fi
-
-if echo "$FIRST_LINE" | grep -qE "^Squash "; then
-    printSuccess "Bypass: squash commit detected."
-    exit 0
-fi
-
-# Step 4: Define conventional commit types
-VALID_TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security|deps"
-
-# Step 5: Define the regex pattern for conventional commits
-# Format: type(scope)!: description
-# - type: Required (feat, fix, docs, etc.)
-# - scope: Optional, wrapped in parentheses: (api), (ui), (core)
-# - !: Optional breaking change indicator
-# - description: Required, must start with space
-CONVENTIONAL_COMMIT_REGEX="^($VALID_TYPES)(\(.+\))?!?: .+"
-
-# Step 6: Check if message is empty
-if [ -z "$FIRST_LINE" ]; then
+if [[ -z "$FIRST_LINE" ]]; then
     printError "Commit message cannot be empty!"
     exit 1
 fi
 
-# Step 7: Check if first line follows conventional commit format
-if ! echo "$FIRST_LINE" | grep -qE "$CONVENTIONAL_COMMIT_REGEX"; then
-    printError "Commit message does not follow Conventional Commits format!"
-    echo "Expected format: <type>(optional-scope): <description>"
-    echo "Valid types: $VALID_TYPES"
-    echo "Examples:"
-    echo "  feat(auth): add login functionality"
-    echo "  fix: resolve null pointer exception"
-    echo "  docs(readme): update installation instructions"
+# Bypass Git-generated commit messages
+case "$FIRST_LINE" in
+    "Merge "*)
+        printSuccess "Bypass: merge commit detected."
+        exit 0
+        ;;
+    "Revert "*)
+        printSuccess "Bypass: revert commit detected."
+        exit 0
+        ;;
+    "fixup! "*|"squash! "*|"amend! "*)
+        printSuccess "Bypass: autosquash commit detected."
+        exit 0
+        ;;
+esac
+
+# Define allowed commit types
+VALID_TYPES='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security|deps'
+
+# Conventional Commit format:
+#   type(scope)!: description
+#
+# - type:        Required; must be one of the allowed types
+# - scope:       Optional; wrapped in parentheses
+# - !:           Optional; indicates a breaking change
+# - description: Required; preceded by ": ", with a non-whitespace first character
+CONVENTIONAL_COMMIT_REGEX="^(${VALID_TYPES})(\([a-zA-Z0-9._/-]+\))?!?: [^[:space:]].*$"
+
+if [[ ! "$FIRST_LINE" =~ $CONVENTIONAL_COMMIT_REGEX ]]; then
+    printError "Commit message does not follow the required Conventional Commits format."
+    printf '%s\n' \
+        "Expected: <type>(optional-scope)!: <description>" \
+        "Valid types: $VALID_TYPES" \
+        "" \
+        "Examples:" \
+        "  feat(auth): add login functionality" \
+        "  fix: resolve null pointer exception" \
+        "  feat(api)!: remove deprecated endpoint"
     exit 1
 fi
 
-# Step 8: Check first line length (recommended: 50 chars, max: 72 chars)
-if [ "$FIRST_LINE_LENGTH" -gt 72 ]; then
-    printError "First line is too long: ${FIRST_LINE_LENGTH} characters (max: 72)"
+FIRST_LINE_LENGTH=${#FIRST_LINE}
+
+if (( FIRST_LINE_LENGTH > 72 )); then
+    printError "Subject is ${FIRST_LINE_LENGTH} characters (max 72)."
     exit 1
-elif [ "$FIRST_LINE_LENGTH" -gt 50 ]; then
-    printWarning "Commit subject is ${FIRST_LINE_LENGTH} chars (recommended ≤50, max 72)"
+elif (( FIRST_LINE_LENGTH > 50 )); then
+    printWarning "Subject is ${FIRST_LINE_LENGTH} characters (recommended ≤50)."
 fi
 
-# Step 9: Check if description starts with lowercase (conventional commits best practice)
-if echo "$FIRST_LINE" | grep -qE "^($VALID_TYPES)(\(.+\))?: [A-Z]"; then
-    printWarning "Description should start with lowercase letter"
+# Warn if the description starts with an uppercase letter (style preference)
+LOWERCASE_REGEX="^(${VALID_TYPES})(\([a-zA-Z0-9._/-]+\))?!?: [A-Z]"
+if [[ "$FIRST_LINE" =~ $LOWERCASE_REGEX ]]; then
+    printWarning "Description should start with a lowercase letter."
 fi
 
-# Step 10: Check if first line ends with a period
-# Enforce Git commit style: commit subject cannot end with a period
-if echo "$FIRST_LINE" | grep -qE "\.$"; then
-    printError "First line should not end with a period"
+# Enforce style rule: subject should not end with a period
+if [[ "$FIRST_LINE" == *. ]]; then
+    printError "Subject should not end with a period."
     exit 1
 fi
 
-# Step 11: If there's a body, check for blank line separation
-LINE_COUNT=$(echo "$COMMIT_MSG" | wc -l)
-if [ "$LINE_COUNT" -gt 1 ]; then
-    SECOND_LINE=$(echo "$COMMIT_MSG" | sed -n '2p')
-    if [ -n "$SECOND_LINE" ]; then
-        printWarning "Second line should be blank (separate subject from body)"
-    fi
+# Warn if the commit body is not separated from the subject by a blank line
+SECOND_LINE=$(sed -n '2p' "$COMMIT_MSG_FILE")
+if [[ -n "$SECOND_LINE" ]]; then
+    printWarning "Second line should be blank to separate subject from body."
 fi
 
 exit 0

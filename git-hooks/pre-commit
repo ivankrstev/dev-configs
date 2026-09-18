@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+
+# ============================================================================
+# Git Pre-Commit Validator (pre-commit hook)
+# ============================================================================
+#
+# Purpose: Performs repository-agnostic checks on staged changes before commit
+# Usage:   Invoked automatically by Git as a pre-commit hook
+#
+# NOTE: This hook can be bypassed with:
+#       git commit --no-verify
+#
+# IMPORTANT: This file must be executable!
+#            Run: chmod +x <path-to-hook>/pre-commit
+#
+# ============================================================================
+
+# Configuration
+
+# Warn when committing directly on protected branches
+WARN_PROTECTED_BRANCH_COMMIT=true
+PROTECTED_BRANCHES=("main" "master")
+
+# Maximum allowed size for a staged file, in MiB
+MAX_FILE_SIZE_MB=20
+MAX_FILE_SIZE_BYTES=$((MAX_FILE_SIZE_MB * 1024 * 1024))
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Helpers
+
+# Function to print error messages
+printError() {
+    printf '%b%s\n' "${RED}[COMMIT REJECTED]${NC} " "$1"
+}
+
+# Function to print success messages
+printSuccess() {
+    printf '%b%s\n' "${GREEN}[COMMIT ACCEPTED]${NC} " "$1"
+}
+
+# Function to print warnings
+printWarning() {
+    printf '%b%s\n' "${YELLOW}[WARNING]${NC} " "$1"
+}
+
+# Check whether a branch is protected
+isProtectedBranch() {
+    local BRANCH="$1"
+    local PROTECTED_BRANCH
+
+    for PROTECTED_BRANCH in "${PROTECTED_BRANCHES[@]}"; do
+        if [[ "$BRANCH" == "$PROTECTED_BRANCH" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Validation
+
+# Ensure the hook is running inside a Git working tree
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printError "Not inside a Git working tree."
+    exit 1
+fi
+
+# Warn when committing directly on a protected branch
+CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+
+if [[ "$WARN_PROTECTED_BRANCH_COMMIT" == true ]] &&
+   [[ -n "$CURRENT_BRANCH" ]] &&
+   isProtectedBranch "$CURRENT_BRANCH"; then
+    printWarning "You are committing directly on '$CURRENT_BRANCH'. Consider creating a feature branch."
+fi
+
+# Check staged changes for whitespace errors and unresolved conflict markers
+if ! DIFF_CHECK_OUTPUT=$(git diff --cached --check 2>&1); then
+    printError "Staged changes contain whitespace errors or unresolved conflict markers."
+    printf '%s\n' "$DIFF_CHECK_OUTPUT"
+    exit 1
+fi
+
+PROBLEM_FOUND=0
+
+# Inspect added, copied, modified, and renamed staged files
+while IFS= read -r -d '' FILE; do
+    # Only inspect blobs; skip submodules and other non-file objects
+    OBJECT_TYPE=$(git cat-file -t ":$FILE" 2>/dev/null || true)
+
+    if [[ "$OBJECT_TYPE" != "blob" ]]; then
+        continue
+    fi
+
+    # Check staged file size
+    FILE_SIZE=$(git cat-file -s ":$FILE" 2>/dev/null || true)
+
+    if [[ "$FILE_SIZE" =~ ^[0-9]+$ ]] && (( FILE_SIZE > MAX_FILE_SIZE_BYTES )); then
+        printError "Staged file is larger than ${MAX_FILE_SIZE_MB} MiB: $FILE"
+        PROBLEM_FOUND=1
+        continue
+    fi
+
+    # Check for obvious private keys in staged content
+    if git show ":$FILE" 2>/dev/null |
+        grep -aEq -- '-----BEGIN (([A-Z0-9]+ )*PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----'; then
+        printError "Possible private key detected in staged file: $FILE"
+        PROBLEM_FOUND=1
+    fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+if (( PROBLEM_FOUND != 0 )); then
+    exit 1
+fi
+
+printSuccess "Pre-commit checks passed."
+exit 0

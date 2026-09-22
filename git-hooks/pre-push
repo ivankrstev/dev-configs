@@ -26,6 +26,11 @@ PROTECTED_BRANCHES=("main" "master")
 # Intentionally permissive: only reject obviously malformed addresses.
 EMAIL_REGEX='^[^[:space:]@]+@[^[:space:]@]+$'
 
+# Block WIP commits on all branches.
+# Set to true to reject WIP commits on any branch, not just protected branches.
+# Set to false to allow WIP commits on non-protected branches.
+BLOCK_WIP_ON_ALL_BRANCHES=false
+
 # Detect "WIP" as a standalone token, case-insensitively.
 WIP_REGEX='(^|[^[:alnum:]_])[Ww][Ii][Pp]([^[:alnum:]_]|$)'
 
@@ -110,7 +115,13 @@ COMMITS_FILE=$(mktemp) || {
     exit 1
 }
 
-trap 'rm -f "$COMMITS_FILE"' EXIT
+PROTECTED_COMMITS_FILE=$(mktemp) || {
+    rm -f "$COMMITS_FILE"
+    printError "Unable to create temporary file."
+    exit 1
+}
+
+trap 'rm -f "$COMMITS_FILE" "$PROTECTED_COMMITS_FILE"' EXIT
 
 PROBLEM_FOUND=0
 
@@ -164,7 +175,19 @@ while read -r LOCAL_REF LOCAL_OID REMOTE_REF REMOTE_OID; do
     fi
 
     # Collect commits introduced by this ref update
-    if ! collectCommits "$LOCAL_COMMIT" "$REMOTE_OID" >> "$COMMITS_FILE"; then
+    if REF_COMMITS=$(collectCommits "$LOCAL_COMMIT" "$REMOTE_OID"); then
+        printf '%s\n' "$REF_COMMITS" >> "$COMMITS_FILE"
+
+        # Track commits being pushed specifically to protected branches
+        if [[ -n "$REMOTE_BRANCH" ]] && isProtectedBranch "$REMOTE_BRANCH"; then
+            if [[ "$REMOTE_OID" =~ ^0+$ ]]; then
+                # For a new protected branch, inspect its entire reachable history
+                git rev-list "$LOCAL_COMMIT" >> "$PROTECTED_COMMITS_FILE"
+            else
+                printf '%s\n' "$REF_COMMITS" >> "$PROTECTED_COMMITS_FILE"
+            fi
+        fi
+    else
         printError "Unable to determine commits being pushed for '$REMOTE_REF'."
         PROBLEM_FOUND=1
     fi
@@ -172,6 +195,7 @@ done
 
 # Avoid checking the same commit more than once when pushing overlapping refs
 sort -u "$COMMITS_FILE" -o "$COMMITS_FILE"
+sort -u "$PROTECTED_COMMITS_FILE" -o "$PROTECTED_COMMITS_FILE"
 
 while IFS= read -r COMMIT; do
     [[ -z "$COMMIT" ]] && continue
@@ -191,8 +215,13 @@ while IFS= read -r COMMIT; do
 
     # Reject commits marked as work in progress
     if [[ "$SUBJECT" =~ $WIP_REGEX ]]; then
-        printError "WIP commit detected: $SHORT_COMMIT $SUBJECT"
-        PROBLEM_FOUND=1
+        if [[ "$BLOCK_WIP_ON_ALL_BRANCHES" == true ]]; then
+            printError "WIP commit detected: $SHORT_COMMIT $SUBJECT"
+            PROBLEM_FOUND=1
+        elif grep -Fxq "$COMMIT" "$PROTECTED_COMMITS_FILE"; then
+            printError "WIP commit detected on protected branch: $SHORT_COMMIT $SUBJECT"
+            PROBLEM_FOUND=1
+        fi
     fi
 
     # Reject obviously malformed author email addresses

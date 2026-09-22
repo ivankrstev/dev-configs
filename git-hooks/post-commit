@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# ============================================================================
+# Git Post-Commit Validator (post-commit hook)
+# ============================================================================
+#
+# Purpose: Performs informational checks after a commit is created
+# Usage:   Invoked automatically by Git as a post-commit hook
+#
+# NOTE: This hook is informational only and cannot reject a commit.
+#
+# IMPORTANT: This file must be executable!
+#            Run: chmod +x <path-to-hook>/post-commit
+#
+# ============================================================================
+
+# Configuration
+
+# Warn when author and committer dates do not match exactly.
+WARN_MISMATCHED_COMMIT_DATES=true
+
+# Color codes for output
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Helpers
+
+# Function to print warnings
+printWarning() {
+    printf '%b%s\n' "${YELLOW}[WARNING]${NC} " "$1"
+}
+
+# Validation
+
+if [[ "$WARN_MISMATCHED_COMMIT_DATES" == true ]]; then
+    AUTHOR_DATE=$(git show -s --format=%aI HEAD)
+    COMMITTER_DATE=$(git show -s --format=%cI HEAD)
+
+    if [[ "$AUTHOR_DATE" != "$COMMITTER_DATE" ]]; then
+        printWarning "Author and committer dates do not match."
+        printf '  Author:    %s\n' "$AUTHOR_DATE"
+        printf '  Committer: %s\n' "$COMMITTER_DATE"
+    fi
+fi
+
+exit 0

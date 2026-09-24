@@ -45,32 +45,89 @@ alias gmm='git merge' # specify branch after alias
 # Rebase current branch onto another branch
 alias grbm='git rebase' # specify branch after alias
 
-
-alias gst='git status'
-alias gaa='git add --all'
+# ============================
+# STASHING
+# ============================
+# Show status in short format with branch info
+alias gs='git status -sb'
 alias ga='git add'
+alias gaa='git add --all'
+
+# ============================
+# RESTORING
+# ============================
+# Unstage file(s) and discard changes in the working directory
+alias gr='git restore'
+# Unstage file(s), but keep changes in the working directory
+alias grss='git restore --staged'
+# Unstage all files and discard changes in the working directory
+alias grsa='git restore .'
+# Unstage all files, but keep changes in the working directory
+alias grssa='git restore --staged .'
+
+# ============================
+# COMMITTING
+# ============================
 alias gc='git commit'
 alias gcm='git commit -m'
 alias gcam='git commit -am'
 alias gca='git commit --amend'
+# Amend the last commit without changing its message
 alias gcan='git commit --amend --no-edit'
+alias gsh='git show'
+
+# ============================
+# REMOTE REPOSITORY
+# ============================
+alias gf='git fetch'
 alias gp='git push'
 alias gpl='git pull'
-alias gf='git fetch'
-alias gco='git checkout'
-alias gcb='git checkout -b'
+
+# ============================
+# BRANCHING
+# ============================
+# List all branches
 alias gb='git branch'
+# List local and remote branches
 alias gba='git branch -a'
+# Delete a local branch
 alias gbd='git branch -d'
-alias gs='git status -sb'
+# Switch to another branch
+alias gsw='git switch'
+# Create and switch to a new branch
+alias gsc='git switch -c'
+
+# ============================
+# MERGING & REBASING
+# ============================
 alias gm='git merge'
 alias grb='git rebase'
 alias grbi='git rebase -i'
 alias grbc='git rebase --continue'
 alias grba='git rebase --abort'
+
+# ============================
+# STASHING
+# ============================
 alias gsta='git stash'
 alias gstp='git stash pop'
 alias gstl='git stash list'
 alias gstd='git stash drop'
+
+# ============================
+# CLEANING & RESETTING
+# ============================
+# Preview untracked files/directories that would be deleted
+alias gcleanp='git clean -fdn'
+# Delete untracked files/directories
 alias gclean='git clean -fd'
-alias greset='git reset --hard'
+
+# Undo last commit, keep changes staged
+alias gundo='git reset --soft HEAD~1'
+# Undo last commit, keep changes unstaged
+alias gundom='git reset HEAD~1'
+
+# Discard all tracked working-tree and staged changes
+alias greset='git reset --hard HEAD'
+# Reset current branch to remote version
+alias greseto='git reset --hard origin/$(git branch --show-current)'
